@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>STOPWATCH - Precision Timer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .container {
+      max-width: 32rem;
+      width: 100%;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #38bdf8;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 14px;
+      border: 1px solid #334155;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+    }
+
+    .timer-display {
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .time {
+      font-family: "Courier New", monospace;
+      font-size: 4rem;
+      font-weight: bold;
+      margin-bottom: 2rem;
+      transition: all 0.3s ease;
+    }
+
+    .time.running {
+      text-shadow: 0 0 30px #22c55e;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .btn {
+      width: 4rem;
+      height: 4rem;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+    }
+
+    .btn-start {
+      background: #22c55e;
+      color: white;
+    }
+
+    .btn-pause {
+      background: #eab308;
+      color: #1a1a1a;
+    }
+
+    .btn-stop {
+      background: transparent;
+      border: 2px solid #ef4444;
+      color: #ef4444;
+    }
+
+    .btn-stop:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-lap {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .laps-section {
+      padding: 1.5rem;
+    }
+
+    .laps-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #38bdf8;
+    }
+
+    .laps-list {
+      max-height: 16rem;
+      overflow-y: auto;
+    }
+
+    .lap-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      background: rgba(51, 65, 85, 0.5);
+      border-radius: 8px;
+      border: 1px solid rgba(71, 85, 105, 0.6);
+      margin-bottom: 0.75rem;
+    }
+
+    .lap-number {
+      font-weight: 500;
+    }
+
+    .lap-times {
+      text-align: right;
+      font-family: "Courier New", monospace;
+    }
+
+    .lap-time {
+      font-size: 0.875rem;
+    }
+
+    .total-time {
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 640px) {
+      .header h1 {
+        font-size: 1.5rem;
+      }
+      .time {
+        font-size: 3rem;
+      }
+      .btn {
+        width: 3.5rem;
+        height: 3.5rem;
+        font-size: 1.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>STOPWATCH</h1>
+    </div>
+
+    <!-- Timer Display -->
+    <div class="card">
+      <div class="timer-display">
+        <div id="timeDisplay" class="time">00:00.00</div>
+
+        <div class="controls">
+          <button id="startBtn" class="btn btn-start">▶</button>
+          <button id="pauseBtn" class="btn btn-pause hidden">⏸</button>
+          <button id="stopBtn" class="btn btn-stop">⏹</button>
+          <button id="lapBtn" class="btn btn-lap hidden">⏱</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lap Times -->
+    <div id="lapsCard" class="card hidden">
+      <div class="laps-section">
+        <h3 class="laps-title">
+          <span>⏱</span>
+          Lap Times
+        </h3>
+        <div id="lapsList" class="laps-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class Stopwatch {
+      constructor() {
+        this.time = 0;
+        this.isRunning = false;
+        this.lapTimes = [];
+        this.intervalId = null;
+        this.startTime = 0;
+        this.lastLapTime = 0;
+        
+        this.initElements();
+        this.bindEvents();
+      }
+      
+      initElements() {
+        this.timeDisplay = document.getElementById('timeDisplay');
+        this.startBtn = document.getElementById('startBtn');
+        this.pauseBtn = document.getElementById('pauseBtn');
+        this.stopBtn = document.getElementById('stopBtn');
+        this.lapBtn = document.getElementById('lapBtn');
+        this.lapsCard = document.getElementById('lapsCard');
+        this.lapsList = document.getElementById('lapsList');
+      }
+      
+      bindEvents() {
+        this.startBtn.addEventListener('click', () => this.start());
+        this.pauseBtn.addEventListener('click', () => this.pause());
+        this.stopBtn.addEventListener('click', () => this.reset());
+        this.lapBtn.addEventListener('click', () => this.addLap());
+      }
+      
+      formatTime(milliseconds) {
+        const totalSeconds = Math.floor(milliseconds / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const ms = Math.floor((milliseconds % 1000) / 10);
+        
+        return `${minutes.toString().padStart(2, '0')}:${seconds
+          .toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+      }
+      
+      updateDisplay() {
+        this.timeDisplay.textContent = this.formatTime(this.time);
+        this.timeDisplay.classList.toggle('running', this.isRunning);
+      }
+      
+      start() {
+        if (!this.isRunning) {
+          this.startTime = Date.now() - this.time;
+          this.intervalId = setInterval(() => {
+            this.time = Date.now() - this.startTime;
+            this.updateDisplay();
+          }, 10);
+          
+          this.isRunning = true;
+          this.startBtn.classList.add('hidden');
+          this.pauseBtn.classList.remove('hidden');
+          this.lapBtn.classList.remove('hidden');
+        }
+      }
+      
+      pause() {
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+          this.intervalId = null;
+        }
+        
+        this.isRunning = false;
+        this.startBtn.classList.remove('hidden');
+        this.pauseBtn.classList.add('hidden');
+        this.lapBtn.classList.add('hidden');
+        this.updateDisplay();
+      }
+      
+      reset() {
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+          this.intervalId = null;
+        }
+        
+        this.time = 0;
+        this.isRunning = false;
+        this.lapTimes = [];
+        this.lastLapTime = 0;
+        
+        this.startBtn.classList.remove('hidden');
+        this.pauseBtn.classList.add('hidden');
+        this.lapBtn.classList.add('hidden');
+        this.lapsCard.classList.add('hidden');
+        
+        this.updateDisplay();
+        this.renderLaps();
+      }
+      
+      addLap() {
+        if (this.isRunning) {
+          const currentTime = this.time;
+          const lapTime = currentTime - this.lastLapTime;
+          
+          this.lapTimes.unshift({
+            id: this.lapTimes.length + 1,
+            time: currentTime,
+            lapTime: lapTime
+          });
+          
+          this.lastLapTime = currentTime;
+          this.renderLaps();
+          this.lapsCard.classList.remove('hidden');
+        }
+      }
+      
+      renderLaps() {
+        this.lapsList.innerHTML = this.lapTimes.map((lap, index) => `
+          <div class="lap-item">
+            <span class="lap-number">Lap ${this.lapTimes.length - index}</span>
+            <div class="lap-times">
+              <div class="lap-time">${this.formatTime(lap.lapTime)}</div>
+              <div class="total-time">Total: ${this.formatTime(lap.time)}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+    
+    // Initialize stopwatch
+    document.addEventListener('DOMContentLoaded', () => {
+      new Stopwatch();
+    });
+  </script>
+</body>
+</html>
